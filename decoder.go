@@ -31,13 +31,21 @@ func DecodeFile(path string) (*Pattern, error) {
 		return nil, err
 	}
 
-	version, err := byReader.ReadBytes('\x00')
+	version := make([]byte, 32)
+	_, err = byReader.Read(version)
+	if err != nil {
+		return nil, err
+	}
+
+	var tempo float32
+	err = binary.Read(byReader, binary.LittleEndian, &tempo)
 	if err != nil {
 		return nil, err
 	}
 
 	p := &Pattern{
 		Version: string(version),
+		Tempo:   tempo,
 	}
 	return p, nil
 }
@@ -47,7 +55,7 @@ func DecodeFile(path string) (*Pattern, error) {
 // TODO: implement
 type Pattern struct {
 	Version string
-	Tempo   float64
+	Tempo   float32
 	Tracks  []*Track
 }
 
