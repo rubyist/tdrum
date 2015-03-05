@@ -2,10 +2,12 @@ package drum
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // DecodeFile decodes the drum machine file found at the provided path
@@ -36,16 +38,59 @@ func DecodeFile(path string) (*Pattern, error) {
 	if err != nil {
 		return nil, err
 	}
+	byLeft -= 32
 
 	var tempo float32
 	err = binary.Read(byReader, binary.LittleEndian, &tempo)
 	if err != nil {
 		return nil, err
 	}
+	byLeft -= 4
+
+	tracks := make([]*Track, 0)
+	for byLeft > 0 {
+		var id int32
+		err = binary.Read(byReader, binary.LittleEndian, &id)
+		if err != nil {
+			return nil, err
+		}
+		byLeft -= 4
+
+		l, err := byReader.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		byLeft -= 1
+
+		name := make([]byte, l)
+		_, err = byReader.Read(name)
+		if err != nil {
+			return nil, err
+		}
+		byLeft -= int64(l)
+
+		steps := make([]bool, 16)
+		for i := 0; i < 16; i++ {
+			s, err := byReader.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			steps[i] = s == 1
+			byLeft -= 1
+		}
+
+		track := &Track{
+			Id:    id,
+			Name:  string(name),
+			Steps: steps,
+		}
+		tracks = append(tracks, track)
+	}
 
 	p := &Pattern{
-		Version: string(version),
+		Version: string(bytes.Trim(version, "\x00")),
 		Tempo:   tempo,
+		Tracks:  tracks,
 	}
 	return p, nil
 }
@@ -60,11 +105,33 @@ type Pattern struct {
 }
 
 func (p *Pattern) String() string {
-	return ""
+	s := "Saved with HW Version: " + p.Version + "\n"
+	s += fmt.Sprintf("Tempo: %s\n", strings.TrimSuffix(fmt.Sprintf("%.1f", p.Tempo), ".0"))
+	for _, track := range p.Tracks {
+		s += track.String()
+	}
+
+	return s
 }
 
 type Track struct {
-	Id    int
+	Id    int32
 	Name  string
-	Steps [16]bool
+	Steps []bool
+}
+
+func (t *Track) String() string {
+	s := fmt.Sprintf("(%d) %s\t", t.Id, t.Name)
+	for i, step := range t.Steps {
+		if i%4 == 0 {
+			s += "|"
+		}
+		if step {
+			s += "x"
+		} else {
+			s += "-"
+		}
+	}
+	s += "|\n"
+	return s
 }
