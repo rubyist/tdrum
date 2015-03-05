@@ -47,7 +47,7 @@ func DecodeFile(path string) (*Pattern, error) {
 	}
 	byLeft -= 4
 
-	tracks := make([]*Track, 0)
+	var tracks []*Track
 	for byLeft > 0 {
 		var id int32
 		err = binary.Read(byReader, binary.LittleEndian, &id)
@@ -60,7 +60,7 @@ func DecodeFile(path string) (*Pattern, error) {
 		if err != nil {
 			return nil, err
 		}
-		byLeft -= 1
+		byLeft--
 
 		name := make([]byte, l)
 		_, err = byReader.Read(name)
@@ -76,7 +76,7 @@ func DecodeFile(path string) (*Pattern, error) {
 				return nil, err
 			}
 			steps[i] = s == 1
-			byLeft -= 1
+			byLeft--
 		}
 
 		track := &Track{
@@ -114,14 +114,15 @@ func (p *Pattern) String() string {
 	return s
 }
 
+// Track is the instrument track within the Pattern.
 type Track struct {
-	Id    int32
+	ID    int32
 	Name  string
 	Steps []bool
 }
 
 func (t *Track) String() string {
-	s := fmt.Sprintf("(%d) %s\t", t.Id, t.Name)
+	s := fmt.Sprintf("(%d) %s\t", t.ID, t.Name)
 	for i, step := range t.Steps {
 		if i%4 == 0 {
 			s += "|"
