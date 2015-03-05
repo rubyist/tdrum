@@ -20,12 +20,14 @@ func DecodeFile(path string) (*Pattern, error) {
 		return nil, err
 	}
 
+	// Read the SPLICE header
 	header := make([]byte, 6)
 	file.Read(header)
 	if string(header) != "SPLICE" {
 		return nil, errors.New("Invalid splice file")
 	}
 
+	// Next up is an integer containing the number of bytes left to read
 	byReader := bufio.NewReader(file)
 	var byLeft int64
 	err = binary.Read(byReader, binary.BigEndian, &byLeft)
@@ -33,13 +35,16 @@ func DecodeFile(path string) (*Pattern, error) {
 		return nil, err
 	}
 
+	// The 32 byte long version string
 	version := make([]byte, 32)
 	_, err = byReader.Read(version)
 	if err != nil {
 		return nil, err
 	}
+	version = bytes.Trim(version, "\x00")
 	byLeft -= 32
 
+	// Tempo is a little endian 32 bit floating point
 	var tempo float32
 	err = binary.Read(byReader, binary.LittleEndian, &tempo)
 	if err != nil {
@@ -49,6 +54,7 @@ func DecodeFile(path string) (*Pattern, error) {
 
 	var tracks []*Track
 	for byLeft > 0 {
+		// Track id is a little endian 32 bit int
 		var id int32
 		err = binary.Read(byReader, binary.LittleEndian, &id)
 		if err != nil {
@@ -56,12 +62,14 @@ func DecodeFile(path string) (*Pattern, error) {
 		}
 		byLeft -= 4
 
+		// A byte describing the length of the instrument name
 		l, err := byReader.ReadByte()
 		if err != nil {
 			return nil, err
 		}
 		byLeft--
 
+		// The instrument name
 		name := make([]byte, l)
 		_, err = byReader.Read(name)
 		if err != nil {
@@ -69,6 +77,7 @@ func DecodeFile(path string) (*Pattern, error) {
 		}
 		byLeft -= int64(l)
 
+		// 16 steps, 1 byte each
 		steps := make([]bool, 16)
 		for i := 0; i < 16; i++ {
 			s, err := byReader.ReadByte()
@@ -80,7 +89,7 @@ func DecodeFile(path string) (*Pattern, error) {
 		}
 
 		track := &Track{
-			Id:    id,
+			ID:    id,
 			Name:  string(name),
 			Steps: steps,
 		}
@@ -88,7 +97,7 @@ func DecodeFile(path string) (*Pattern, error) {
 	}
 
 	p := &Pattern{
-		Version: string(bytes.Trim(version, "\x00")),
+		Version: string(version),
 		Tempo:   tempo,
 		Tracks:  tracks,
 	}
