@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -35,7 +36,7 @@ func DecodeFile(path string) (*Pattern, error) {
 
 	// The 32 byte long version string
 	version := make([]byte, 32)
-	_, err = buf.Read(version)
+	_, err = io.ReadFull(buf, version)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +61,7 @@ func DecodeFile(path string) (*Pattern, error) {
 		}
 		remaining -= 4
 
-		// A byte describing the length of the instrument name
+		// A byte indicating the length of the instrument name
 		l, err := buf.ReadByte()
 		if err != nil {
 			return nil, err
@@ -69,7 +70,7 @@ func DecodeFile(path string) (*Pattern, error) {
 
 		// The instrument name
 		name := make([]byte, l)
-		_, err = buf.Read(name)
+		_, err = io.ReadFull(buf, name)
 		if err != nil {
 			return nil, err
 		}
