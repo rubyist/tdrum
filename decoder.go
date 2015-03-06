@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // DecodeFile decodes the drum machine file found at the provided path
@@ -113,7 +112,7 @@ type Pattern struct {
 
 func (p *Pattern) String() string {
 	s := "Saved with HW Version: " + p.Version + "\n"
-	s += fmt.Sprintf("Tempo: %s\n", strings.TrimSuffix(fmt.Sprintf("%.1f", p.Tempo), ".0"))
+	s += fmt.Sprintf("Tempo: %v\n", p.Tempo)
 	for _, track := range p.Tracks {
 		s += track.String()
 	}
