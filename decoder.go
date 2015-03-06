@@ -10,6 +10,10 @@ import (
 	"os"
 )
 
+const (
+	spliceHeader = "SPLICE"
+)
+
 // DecodeFile decodes the drum machine file found at the provided path
 // and returns a pointer to a parsed pattern which is the entry point to the
 // rest of the data.
@@ -23,7 +27,7 @@ func DecodeFile(path string) (*Pattern, error) {
 	// Read the SPLICE header
 	header := make([]byte, 6)
 	buf.Read(header)
-	if string(header) != "SPLICE" {
+	if string(header) != spliceHeader {
 		return nil, errors.New("Invalid splice file")
 	}
 
@@ -101,6 +105,69 @@ func DecodeFile(path string) (*Pattern, error) {
 		Tracks:  tracks,
 	}
 	return p, nil
+}
+
+func Encode(pat *Pattern, path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	buf := bufio.NewWriter(file)
+	// Write header
+	_, err = buf.WriteString(spliceHeader)
+	if err != nil {
+		return err
+	}
+
+	// Write bytes left
+	var total uint64
+	total = 32                           // version string
+	total += 4                           // tempo
+	total += uint64(len(pat.Tracks) * 4) // track ids
+	total += uint64(len(pat.Tracks) * 1) // inst lengths
+	for _, track := range pat.Tracks {
+		total += uint64(len(track.Name)) // inst names
+	}
+	total += uint64(len(pat.Tracks)) * 16 // steps
+	err = binary.Write(buf, binary.BigEndian, total)
+	if err != nil {
+		return err
+	}
+
+	// Write version string
+	v := "0.808-alpha"
+	buf.WriteString(v)
+	for i := 0; i < 32-len(v); i++ { // sucks
+		err := buf.WriteByte(0)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Write tempo
+	err = binary.Write(buf, binary.LittleEndian, pat.Tempo)
+	if err != nil {
+		return err
+	}
+
+	// Write tracks
+	for _, track := range pat.Tracks {
+		binary.Write(buf, binary.LittleEndian, track.ID)
+		binary.Write(buf, binary.BigEndian, uint8(len(track.Name)))
+		buf.WriteString(track.Name)
+		for _, step := range track.Steps {
+			if step {
+				buf.WriteByte(1)
+			} else {
+				buf.WriteByte(0)
+			}
+		}
+	}
+
+	buf.Flush()
+	return nil
 }
 
 // Pattern is the high level representation of the
