@@ -2,10 +2,8 @@ package main
 
 import (
 	"code.google.com/p/portaudio-go/portaudio"
-	"github.com/mkb218/gosndfile/sndfile"
 	"github.com/rubyist/drum"
 	"log"
-	"sync"
 	"time"
 )
 
@@ -73,54 +71,20 @@ func main() {
 
 	log.Print(p.String())
 
-	//drum.Encode(p, "bass.splice")
+	drum.Encode(p, "test.splice")
 
 	//	pat, err := drum.DecodeFile("bass.splice")
 	//	if err != nil {
 	//		log.Fatal(err)
 	//	}
 
-	//drum.Play(pat)
-	period := time.Millisecond * time.Duration(((1.0/(p.Tempo/60.0))/4.0)*1000.0)
-	log.Printf("Period: %v", period)
-
-	mixer := NewBufferedMixer(0)
-
-	for _, track := range p.Tracks {
-		fileName := track.Name + ".wav"
-		var info sndfile.Info
-		f, err := sndfile.Open(fileName, sndfile.Read, &info)
-		if err != nil {
-			log.Fatalf("error: %s", err)
-		}
-		log.Printf("Track %s, Frames: %d, Sample Rate: %d, Channels: %d", track.Name, info.Frames, info.Samplerate, info.Channels)
-		buffer := make([]int32, int(info.Frames)*int(info.Channels))
-		_, err = f.ReadFrames(buffer)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		mixer.Add(buffer, track.Steps)
-		f.Close()
-	}
-
-	start := make(chan int)
-
-	go func() {
-		<-start
-		timer := time.NewTicker(period)
-		for {
-			<-timer.C
-			mixer.Tick()
-		}
-	}()
+	sequencer := NewSequencer()
+	sequencer.Add(p)
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
-	var starter sync.Once
 	stream, err := portaudio.OpenDefaultStream(0, 2, 44100, 0, func(o []int32) {
-		starter.Do(func() { close(start) })
-		mixer.Read(o)
+		sequencer.Read(o)
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -129,7 +93,8 @@ func main() {
 	stream.Start()
 	defer stream.Stop()
 
-	start <- 1
+	sequencer.Start()
+
 	for {
 		time.Sleep(time.Second)
 	}
