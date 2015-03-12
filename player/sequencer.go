@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/mkb218/gosndfile/sndfile"
 	"github.com/rubyist/drum"
 	"log"
+	"path/filepath"
 	"time"
 )
 
@@ -94,7 +96,7 @@ type Instrument struct {
 }
 
 func NewInstrument(t *drum.Track) (*Instrument, error) {
-	fileName := "sounds/" + t.Name + ".wav"
+	fileName := filepath.Join(*soundDir, fmt.Sprintf("%s.wav", t.Name))
 	var info sndfile.Info
 	f, err := sndfile.Open(fileName, sndfile.Read, &info)
 	if err != nil {

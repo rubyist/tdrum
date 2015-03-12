@@ -2,27 +2,27 @@ package main
 
 import (
 	"code.google.com/p/portaudio-go/portaudio"
+	"flag"
 	"github.com/rubyist/drum"
 	"log"
 	"time"
 )
 
-func main() {
-	pat1, err := drum.DecodeFile("test.splice")
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Print(pat1.String())
+var soundDir = flag.String("d", "sounds", "directory containing samples")
 
-	pat2, err := drum.DecodeFile("test2.splice")
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Print(pat2.String())
+func main() {
+	flag.Parse()
 
 	sequencer := NewSequencer()
-	sequencer.Add(pat1)
-	sequencer.Add(pat2)
+
+	for _, file := range flag.Args() {
+		pattern, err := drum.DecodeFile(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sequencer.Add(pattern)
+		log.Print(pattern.String())
+	}
 
 	portaudio.Initialize()
 	defer portaudio.Terminate()
