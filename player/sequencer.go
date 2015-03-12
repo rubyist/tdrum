@@ -12,11 +12,14 @@ type Sequencer struct {
 	instruments map[int32]*Instrument
 	pattern     int
 	step        int
+	ticker      *time.Ticker
+	stop        chan int
 }
 
 func NewSequencer() *Sequencer {
 	return &Sequencer{
 		instruments: make(map[int32]*Instrument),
+		stop:        make(chan int, 1),
 	}
 }
 
@@ -51,10 +54,19 @@ func (s *Sequencer) Start() {
 	go func() {
 		timer := time.NewTicker(period)
 		for {
-			<-timer.C
-			s.Tick()
+			select {
+			case <-timer.C:
+				s.Tick()
+			case <-s.stop:
+				timer.Stop()
+				return
+			}
 		}
 	}()
+}
+
+func (s *Sequencer) Stop() {
+	s.stop <- 1
 }
 
 func (s *Sequencer) Tick() {
@@ -68,10 +80,12 @@ func (s *Sequencer) Tick() {
 	s.step++
 	if s.step == 16 {
 		s.pattern++
+		s.pattern %= len(s.patterns)
+		s.Stop()
+		s.Start()
 	}
 
 	s.step %= 16
-	s.pattern %= len(s.patterns)
 }
 
 type Instrument struct {
@@ -80,7 +94,7 @@ type Instrument struct {
 }
 
 func NewInstrument(t *drum.Track) (*Instrument, error) {
-	fileName := t.Name + ".wav"
+	fileName := "sounds/" + t.Name + ".wav"
 	var info sndfile.Info
 	f, err := sndfile.Open(fileName, sndfile.Read, &info)
 	if err != nil {
