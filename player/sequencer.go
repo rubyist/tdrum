@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/mkb218/gosndfile/sndfile"
 	"github.com/rubyist/drum"
-	"log"
 	"path/filepath"
 	"time"
 )
@@ -30,17 +29,18 @@ func NewSequencer() *Sequencer {
 }
 
 // Add adds a Pattern to the sequence
-func (s *Sequencer) Add(p *drum.Pattern) {
+func (s *Sequencer) Add(p *drum.Pattern) error {
 	s.patterns = append(s.patterns, p)
 	for _, track := range p.Tracks {
 		if _, ok := s.instruments[track.ID]; !ok {
 			instrument, err := newInstrument(track)
 			if err != nil {
-				log.Fatalf("Error adding track: %s", err) // should return error
+				return err
 			}
 			s.instruments[track.ID] = instrument
 		}
 	}
+	return nil
 }
 
 // Read fills a data buffer with audio data

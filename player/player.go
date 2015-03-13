@@ -20,7 +20,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		sequencer.Add(pattern)
+		if err := sequencer.Add(pattern); err != nil {
+			log.Fatal(err)
+		}
 		log.Print(pattern.String())
 	}
 
