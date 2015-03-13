@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// Encode encodes the pattern to the file found at the provided path.
 func Encode(pat *Pattern, path string) error {
 	file, err := os.Create(path)
 	if err != nil {
