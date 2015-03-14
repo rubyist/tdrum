@@ -1,9 +1,11 @@
 package main
 
 import (
+	"code.google.com/p/portaudio-go/portaudio"
 	"fmt"
 	"github.com/nsf/termbox-go"
 	"github.com/rubyist/drum"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +18,7 @@ const (
 	textBG       = 0xa3
 	hitFG        = 0xc5
 	tracksBG     = 0x3a
+	curStepBG    = 0xf6
 	cornerTL     = '\u256d'
 	cornerTR     = '\u256e'
 	cornerBL     = '\u2570'
@@ -33,6 +36,8 @@ var (
 	tempoT = []rune{'t', 'e', 'm', 'p', 'o'}
 	timeT  = []rune{'t', 'i', 'm', 'e'}
 )
+
+var sequencer *Sequencer
 
 func box(column, row, width, height int, fill termbox.Attribute) {
 	// Top left
@@ -157,6 +162,8 @@ func drawSteps(row int, steps []bool) {
 		panic("invalid set of steps")
 	}
 
+	curStep := sequencer.Step
+
 	w, _ := termbox.Size()
 	start := w - 41
 	col := start
@@ -170,11 +177,16 @@ func drawSteps(row int, steps []bool) {
 			col++
 		}
 
+		bg := termbox.Attribute(tracksBG)
+		if i == curStep {
+			bg = curStepBG
+		}
+
 		if steps[i] {
-			termbox.SetCell(col, row, hit, hitFG, tracksBG)
+			termbox.SetCell(col, row, hit, hitFG, bg)
 			col++
 		} else {
-			termbox.SetCell(col, row, noHit, termbox.ColorDefault, tracksBG)
+			termbox.SetCell(col, row, noHit, termbox.ColorDefault, bg)
 			col++
 		}
 
@@ -259,6 +271,22 @@ func draw(pattern *drum.Pattern) {
 		termbox.SetCell(w-41, r, vLine, termbox.ColorDefault, tracksBG)
 	}
 
+	// step columns
+	stepCols := []int{
+		w - 39, w - 37, w - 35, w - 33,
+		w - 29, w - 27, w - 25, w - 23,
+		w - 19, w - 17, w - 15, w - 13,
+		w - 9, w - 7, w - 5, w - 3,
+	}
+	step := sequencer.Step
+	for r := trackRow; r < h-4; r++ {
+		for i, c := range stepCols {
+			if i == step {
+				termbox.SetCell(c, r, ' ', termbox.ColorDefault, curStepBG)
+			}
+		}
+	}
+
 	termbox.Flush()
 }
 
@@ -274,6 +302,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	sequencer = NewSequencer()
+	if err := sequencer.Add(pattern); err != nil {
+		fmt.Printf("error: %s\n", err)
+		os.Exit(1)
+	}
+
+	portaudio.Initialize()
+	defer portaudio.Terminate()
+	stream, err := portaudio.OpenDefaultStream(0, 2, 44100, 0, func(o []int32) {
+		sequencer.Read(o)
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stream.Close()
+	stream.Start()
+	defer stream.Stop()
+
 	if err := termbox.Init(); err != nil {
 		panic(err)
 	}
@@ -288,7 +334,6 @@ func main() {
 	}()
 
 	draw(pattern)
-
 loop:
 	for {
 		select {
@@ -296,9 +341,12 @@ loop:
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
 				break loop
 			}
+			if ev.Type == termbox.EventKey && ev.Key == termbox.KeySpace {
+				sequencer.Start()
+			}
 		default:
 			draw(pattern)
-			time.Sleep(time.Millisecond * 10)
+			time.Sleep(time.Millisecond * 2)
 		}
 	}
 }
