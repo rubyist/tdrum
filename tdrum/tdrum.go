@@ -178,7 +178,7 @@ func drawSteps(row int, steps []bool) {
 		}
 
 		bg := termbox.Attribute(tracksBG)
-		if i == curStep {
+		if sequencer.Running && i == curStep {
 			bg = curStepBG
 		}
 
@@ -278,11 +278,14 @@ func draw(pattern *drum.Pattern) {
 		w - 19, w - 17, w - 15, w - 13,
 		w - 9, w - 7, w - 5, w - 3,
 	}
-	step := sequencer.Step
-	for r := trackRow; r < h-4; r++ {
-		for i, c := range stepCols {
-			if i == step {
-				termbox.SetCell(c, r, ' ', termbox.ColorDefault, curStepBG)
+
+	if sequencer.Running {
+		step := sequencer.Step
+		for r := trackRow; r < h-4; r++ {
+			for i, c := range stepCols {
+				if i == step {
+					termbox.SetCell(c, r, ' ', termbox.ColorDefault, curStepBG)
+				}
 			}
 		}
 	}
