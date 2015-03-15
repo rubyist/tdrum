@@ -342,7 +342,11 @@ loop:
 				break loop
 			}
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeySpace {
-				sequencer.Start()
+				if sequencer.Running {
+					sequencer.Stop()
+				} else {
+					sequencer.Start()
+				}
 			}
 		default:
 			draw(pattern)

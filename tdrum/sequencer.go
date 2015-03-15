@@ -13,6 +13,7 @@ import (
 // the patterns in order until Stop() is called.
 type Sequencer struct {
 	Step        int
+	Running     bool
 	patterns    []*drum.Pattern
 	instruments map[int32]*instrument
 	pattern     int
@@ -23,6 +24,7 @@ type Sequencer struct {
 // NewSequencer creates a new Sequencer object.
 func NewSequencer() *Sequencer {
 	return &Sequencer{
+		Running:     false,
 		instruments: make(map[int32]*instrument),
 		stop:        make(chan int, 1),
 	}
@@ -74,11 +76,13 @@ func (s *Sequencer) Start() {
 			}
 		}
 	}()
+	s.Running = true
 }
 
 // Stop stops the sequencer from running.
 func (s *Sequencer) Stop() {
 	s.stop <- 1
+	s.Running = false
 }
 
 func (s *Sequencer) tick() {
