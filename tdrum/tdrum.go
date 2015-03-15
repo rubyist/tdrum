@@ -343,7 +343,7 @@ loop:
 			}
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeySpace {
 				if sequencer.Running {
-					sequencer.Stop()
+					sequencer.Reset()
 				} else {
 					sequencer.Start()
 				}

@@ -85,6 +85,14 @@ func (s *Sequencer) Stop() {
 	s.Running = false
 }
 
+func (s *Sequencer) Reset() {
+	if s.Running {
+		s.Stop()
+	}
+	s.Step = 0
+	s.pattern = 0
+}
+
 func (s *Sequencer) tick() {
 	p := s.patterns[s.pattern]
 	for i := 0; i < len(p.Tracks); i++ {
